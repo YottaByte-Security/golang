@@ -1,4 +1,4 @@
-Pqckage main
+Package main
 
 import (
 	"fmt"
