@@ -1,4 +1,4 @@
-Package main
+package main
 
 import (
 	"fmt"
@@ -78,16 +78,55 @@ func main() {
 //iterate over the file names, call the parsing function and if possible rewrite the file names
 	for _, v = range (dr_list) {
 		amount, date, name = get_file_data(v)
-		if (amount != "") && (date != "") && (name != "") {
+		switch {
+		case (amount != "") && (date != "") && (name != ""): {
 			sf := "/" + v.Name()
 			df := "/" + date + "($" + amount + ") " + name + ".pdf"
-			fm = fm + move_the_file(source, sf, destination, df)
-//			fmt.Printf("%s($%s) %s.pdf\n", date, amount, name)
-//			fmt.Println (source+"/"+v.Name())
+			fm = fm+move_the_file(source, sf, destination, df)
+		}
+		case (amount != "") && (date != "") && (name == ""): {
+			// missing name only
+		}
+		case (amount != "") && (date == "") && (name != ""): {
+			// missing date only
+		}
+		case (amount != "") && (date == "") && (name == ""): {
+			// missing date and name
+		}
+		case (amount == "") && (date != "") && (name != ""): {
+			// missing everything
+		}
+		case (amount == "") && (date != "") && (name == ""): {
+			//missing amount and name
+		}
+		case (amount == "") && (date == "") && (name != ""): {
+			// missing amount and date
+		}
+		case (amount == "") && (date != "") && (name != ""): {
+			// missing amount only
+		}
+
+
+			// A	D	N
+			// 0	0	0 - Everything missing 				- done
+			// 0	0	1 - Missing amount and date			- done
+			// 0	1	0 = Missing  amount and name		- done
+			// 0	1	1 = Missing amount only				- done
+			// 1	0	0 = Missing date and name			- done
+			// 1	0	1 = Missing date only				- done
+			// 1	1	0 = Missing name only				- done
+			// 1	1	1 = Nothing missing					- done
+
+
+
+			//		if (amount != "") && (date != "") && (name != "") {
+			//			sf := "/" + v.Name()
+			//			df := "/" + date + "($" + amount + ") " + name + ".pdf"
+			//			fm = fm + move_the_file(source, sf, destination, df)
+			//		}
 		}
 	}
 	fmt.Printf("%d" +  " files renamed and moved", fm)
 }
-
 
 
