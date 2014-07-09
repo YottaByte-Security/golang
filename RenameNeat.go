@@ -5,24 +5,31 @@
 // Reads files in a directory provided by the user
 // Parses the files for Name, Amount and Date
 // Renames the files according to YYYYMMDD ($amount) Name
-// Places the files in a directory supplied by the user
-// Leaves the files that could not be renamed in the source directory
+// ** Places the files in a directory supplied by the user
+// Leaves the files that could not be renamed in the temporary directory
 // Prints a message if a file could not be moved
 // Prints a summary of how many files were moved
-
+//
+// Next steps:
+// 		Create a process that runs simultaneously and waits for a file to be dropped in the destination directory.
+// 		When a file hits that directory, move it to the receipt archive tree in the proper place.
+//
+// 		Sort the output report style with headings that show what happened to what files
 
 package main
 
+////////////////////////////// Global Declarations
 import (
 	"fmt"
 	"io/ioutil"
 	"regexp"
 	"os"
+	"strings"
 )
 var amount_re = regexp.MustCompile(`\d+\.\d+`)
 var date_re = regexp.MustCompile(`\d{8}`)
-// \d}[\s]\d+\s`)
-var name_re = regexp.MustCompile(`[A-Za-z\s_]+`)
+var name_re = regexp.MustCompile(`[A-Za-z_ ]+`)
+
 var dr_list []os.FileInfo
 var destination, source, amount, date, name, s, d, sf, df string
 var v os.FileInfo
@@ -46,10 +53,21 @@ func input_is_valid(d string) (bool){
 }
 ////////////////////////////////////////////////////////////////
 func get_file_data(v os.FileInfo) (string, string, string) {
+	var br bool
+
+// Use the regex defined in the Global variables section to find name, amount, date from the filename. (Move to here - these variables don't need global scope)
 	amount = amount_re.FindString(v.Name())
 	date = date_re.FindString(v.Name())
-	var names = name_re.FindAllString(v.Name(), 2)
-	name = names[len(names)-1]
+	var names = name_re.FindAllString(v.Name(), 3)
+// Iterate through name, which could contain as many as 3 matches to find the correct name.  Consider including "cash and visa, as these provide no value.
+	name :=""
+	br = false
+	for x:=len(names)-1; x>=0 && !br; x-- {
+		if names[x] != "pdf" && names[x] != "Receipt" && names[x] !=" "{
+			name = names[x]
+			br = true
+		}
+	}
 	return amount, date, name
 }
 ////////////////////////////////////////////////////////////////
@@ -60,7 +78,7 @@ func move_the_file (source, sf, destintion, df string) (n int) {
 			fmt.Printf("Unable to create the directory \n")
 			os.Exit(1)
 	}
-	os.Rename(source+sf, destination+df+ ".pdf")
+//	os.Rename(source+sf, destination+df+ ".pdf")
 	if err == nil {
 		n = 1
 	} else {
@@ -68,7 +86,7 @@ func move_the_file (source, sf, destintion, df string) (n int) {
 		n=0
 	}
 /// if error on writing a file (non-duplicate), write error message and move on
-/// next step is to file these into their proper directories
+	fmt.Printf("The file %60s                will become      %s\n\n\n", sf, df)
 	return n
 }
 ////////////////////////////////////////////////////////////////
@@ -92,11 +110,12 @@ func main() {
 //iterate over the file names, call the parsing function and if possible rewrite the file names
 	for _, v = range (dr_list) {
 		amount, date, name = get_file_data(v)
-		sf := "/" + v.Name()
+//		sf := "/" + v.Name()
+		sf := strings.Replace(v.Name(), "Receipt-", "", 1)
 		switch  {
-		case (amount != "") && (date != "") && (name != ""): {
+		case (amount != "") && (date != "") && (name != "") && (name != " "): {
 			// missing nothing - **********************************								OK
-			df := "/" + date + " ($" + amount + ") " + name
+			df := "/" + date + " ($" + amount + ") " + name + ".pdf"
 			fm = fm+move_the_file(source, sf, destination, df)
 		}
 		case (amount != "") && (date != "") && (name == ""): {
@@ -106,7 +125,7 @@ func main() {
 		}
 		case (amount != "") && (date == "") && (name != ""): {
 			// missing date only
-			df := "/" + " NEED DATE " + " ($" + amount + ") " + name
+			df := "/" + " NEED DATE " + " ($" + amount + ") " + name + ".pdf"
 			fm = fm+move_the_file(source, sf, destination, df)
 		}
 		case (amount != "") && (date == "") && (name == ""): {
@@ -116,11 +135,10 @@ func main() {
 		}
 		case (amount == "") && (date != "") && (name != ""): {
 			// missing amount only
-			df := "/" + date + " ($" + "NEED AMOUNT" + ") " + name
+			df := "/" + date + " ($" + "NEED AMOUNT" + ") " + name +".pdf"
 			fm = fm+move_the_file(source, sf, destination, df)
 		}
 		default : {
-			fmt.Printf("Not enough data to move file: %s\n", sf)
 			// missing everything
 			// missing amount and name
 			// missing amount and date
@@ -128,28 +146,6 @@ func main() {
 		}
 		}
 	}
-	fmt.Printf("\n\n%d" +  " files renamed and moved\n", fm)
 }
-
-
-
-// A	D	N
-// 0	0	0 - Everything missing 				- done
-// 0	0	1 - Missing amount and date			- done
-// 0	1	0 = Missing  amount and name		- done
-// 0	1	1 = Missing amount only				- done
-// 1	0	0 = Missing date and name			- done
-// 1	0	1 = Missing date only				- done
-// 1	1	0 = Missing name only				- done
-// 1	1	1 = Nothing missing					- done
-
-
-
-//		if (amount != "") && (date != "") && (name != "") {
-//			sf := "/" + v.Name()
-//			df := "/" + date + "($" + amount + ") " + name + ".pdf"
-//			fm = fm + move_the_file(source, sf, destination, df)
-//		}
-
 
 
